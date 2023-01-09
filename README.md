@@ -9,8 +9,8 @@ We provide a detailed explanation of each function/method. Such an explanation i
 
 For a fully understanding of the TMFG and for future research directions, we refer the interested reader to the follwing papers:
 - [Parsimonious modeling with information filtering networks](https://journals.aps.org/pre/pdf/10.1103/PhysRevE.94.062306)
-- [Network filtering for big data: Triangulated maximally filtered graph] (https://academic.oup.com/comnet/article/5/2/161/2555365)
-- [Dependency structures in cryptocurrency market from high to low frequency] (https://arxiv.org/pdf/2206.03386.pdf)
+- [Network filtering for big data: Triangulated maximally filtered graph](https://academic.oup.com/comnet/article/5/2/161/2555365)
+- [Dependency structures in cryptocurrency market from high to low frequency](https://arxiv.org/pdf/2206.03386.pdf)
 
 If you use Fast-TMFG in a scientific publication, we would appreciate citations to the following paper:
 
