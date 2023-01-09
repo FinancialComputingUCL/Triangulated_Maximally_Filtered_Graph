@@ -15,7 +15,7 @@ class Fast_TMFG:
 
         The method does the following:
 
-        - It sets the instance variable `W` to the input matrix `c_matrix`.
+        - It sets the instance variable `W` to the input matrix `c_matrix` (a correlation matrix).
         - It creates a copy of `c_matrix` and sets it to the instance variable `original_W`.
         - It sets the instance variable `N` to the number of columns in `c_matrix`.
         - It initializes the instance variable `P` to an NxN matrix of zeros.

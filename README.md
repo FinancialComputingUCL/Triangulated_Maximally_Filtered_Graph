@@ -3,9 +3,9 @@
 Fast_TMFG is an ultra-fast, unweighted implementation of the Triangulated Maximally Fileterd Graph (TMFG).
 
 The architecture is fully scikit-learn compatible. Consequently, it has three main methods:
-- `fit(c_matrix)`: Fits the model to the input matrix `c_matrix`. This method computes the Triangulated Maximal Filtered Graph (TMFG) based on the input matrix.
+- `fit(c_matrix)`: Fits the model to the input matrix `c_matrix` (a correlation matrix). This method computes the Triangulated Maximal Filtered Graph (TMFG) based on the input matrix.
 - `transform()`: Returns the computed cliques and separators set of the model. The method also returns the TMFG adjacency matrix.
-- `fit_transform(c_matrix)`: Fits the model to the input matrix `c_matrix` and returns the computed cliques and separators set and the TMFG adjacency matrix.
+- `fit_transform(c_matrix)`: Fits the model to the input matrix `c_matrix` (a correlation matrix) and returns the computed cliques and separators set and the TMFG adjacency matrix.
 
 We provide a detailed explanation of each function/method. Such an explanation is entirely generated through [ChatGPT](https://chat.openai.com).
 
