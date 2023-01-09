@@ -6,28 +6,28 @@ from utils import *
 import pandas as pd
 
 class Fast_TMFG:
-	def __init__(self):
-		pass
+    def __init__(self):
+        pass
 
-	def fit(self, c_matrix):
-		'''
-		The `fit` method is a member of the `Fast_TMFG` class. It is used to fit the model to the input matrix `c_matrix`.
+    def fit(self, c_matrix):
+        '''
+        The `fit` method is a member of the `Fast_TMFG` class. It is used to fit the model to the input matrix `c_matrix`.
 
-		The method does the following:
+        The method does the following:
 
-		- It sets the instance variable `W` to the input matrix `c_matrix`.
-		- It creates a copy of `c_matrix` and sets it to the instance variable `original_W`.
-		- It sets the instance variable `N` to the number of columns in `c_matrix`.
-		- It initializes the instance variable `P` to an NxN matrix of zeros.
-		- It initializes the instance variable `max_clique_gains` to an array of zeros with length (3 * N) - 6.
-		- It initializes the instance variable `best_vertex` to an array of -1s with length (3 * N) - 6.
-		- It initializes the instance variables `cliques`, `separators`, and `triangles` to empty lists.
-		- It initializes the instance variables `vertex_list`, `peo`, and `JS` to None.
-		
-		After this method is called, the instance variables will be set and the model will be ready to compute the Triangulated Maximal Filtered Graph (TMFG).
-		'''
+        - It sets the instance variable `W` to the input matrix `c_matrix`.
+        - It creates a copy of `c_matrix` and sets it to the instance variable `original_W`.
+        - It sets the instance variable `N` to the number of columns in `c_matrix`.
+        - It initializes the instance variable `P` to an NxN matrix of zeros.
+        - It initializes the instance variable `max_clique_gains` to an array of zeros with length (3 * N) - 6.
+        - It initializes the instance variable `best_vertex` to an array of -1s with length (3 * N) - 6.
+        - It initializes the instance variables `cliques`, `separators`, and `triangles` to empty lists.
+        - It initializes the instance variables `vertex_list`, `peo`, and `JS` to None.
+        
+        After this method is called, the instance variables will be set and the model will be ready to compute the Triangulated Maximal Filtered Graph (TMFG).
+        '''
 
-		self.W = c_matrix
+        self.W = c_matrix
         self.original_W = copy.copy(c_matrix)
 
         self.N = self.W.shape[1]
@@ -46,44 +46,44 @@ class Fast_TMFG:
         self.cliques, self.separators, self.JS = self.__compute_TMFG()
 
     def transform(self):
-    	return self.cliques, self.separators, self.JS
+        return self.cliques, self.separators, self.JS
 
     def fit_transform(self, c_matrix):
-    	self.fit(c_matrix)
-    	return self.cliques, self.separators, self.JS
+        self.fit(c_matrix)
+        return self.cliques, self.separators, self.JS
 
     def __compute_TMFG(self):
-    	'''
-    	The `__compute_TMFG` method is a helper method of the `Fast_TMFG` class that computes the Triangulated Maximal Filtered Graph (TMFG) based on the input matrix.
+        '''
+        The `__compute_TMFG` method is a helper method of the `Fast_TMFG` class that computes the Triangulated Maximal Filtered Graph (TMFG) based on the input matrix.
 
-		The method does the following:
+        The method does the following:
 
-		- It computes the maximum clique of the input matrix and appends it to the list of cliques.
-		- It creates a list of vertices that are not in the maximum clique and sets it to the `vertex_list` instance variable.
-		- It creates four triangles based on the vertices in the maximum clique and appends them to the `triangles` list.
-		- It sets the `peo` instance variable to a copy of the maximum clique.
-		- It sets the main diagonal of the `W` matrix to zeros.
-		- It creates a list of all combinations of two vertices from the maximum clique and sets it to `peo_combinations_list`.
-		- It sets the elements in the `P` matrix to the corresponding elements in the `W` matrix for each combination in `peo_combinations_list`.
-		- It iterates through each triangle in the `triangles` list and computes the best gain and best vertex for each one. It sets the best gain and best vertex for each triangle to the corresponding element in the `max_clique_gains` and `best_vertex` arrays, respectively.
-		- It iterates through each vertex in the `vertex_list` and performs the following actions:
-			. It selects the triangle with the highest maximum clique gain.
-			. It selects the best vertex for that triangle.
-			. It adds the best vertex to the `peo` list.
-			. It creates a thetraedron with the best vertex and the vertices in the selected triangle.
-			. It appends the thetraedron to the `cliques` list.
-			. It sets the `newsep` variable to the selected triangle.
-			. It creates a list of all combinations of two vertices from the thetraedron and sets it to `peo_combinations_list`.
-			. It sets the elements in the `P` matrix to the corresponding elements in the `W` matrix for each combination in `peo_combinations_list`.
-			. It adds the `newsep` variable to the separators list.
-			. It updates the selected triangle by replacing one of its vertices with the best vertex and adding two new triangles with the remaining two vertices and the best vertex.
-			. It removes the best vertex from the `vertex_list`.
-			. It creates a list of vertices that are not in the `vertex_list` and sets it to `no_vertex_list`.
-			. It finds the indices of the triangles in the `triangles` list that contain the best vertex.
-			. It iterates through each index and performs the following actions:
-			 	* It computes the best gain and best vertex for the triangle at that index.
-			 	* It sets the best gain and best vertex for the triangle to the corresponding element in the `max_clique_gains` and `best_vertex` arrays, respectively.
-    	'''
+        - It computes the maximum clique of the input matrix and appends it to the list of cliques.
+        - It creates a list of vertices that are not in the maximum clique and sets it to the `vertex_list` instance variable.
+        - It creates four triangles based on the vertices in the maximum clique and appends them to the `triangles` list.
+        - It sets the `peo` instance variable to a copy of the maximum clique.
+        - It sets the main diagonal of the `W` matrix to zeros.
+        - It creates a list of all combinations of two vertices from the maximum clique and sets it to `peo_combinations_list`.
+        - It sets the elements in the `P` matrix to the corresponding elements in the `W` matrix for each combination in `peo_combinations_list`.
+        - It iterates through each triangle in the `triangles` list and computes the best gain and best vertex for each one. It sets the best gain and best vertex for each triangle to the corresponding element in the `max_clique_gains` and `best_vertex` arrays, respectively.
+        - It iterates through each vertex in the `vertex_list` and performs the following actions:
+            . It selects the triangle with the highest maximum clique gain.
+            . It selects the best vertex for that triangle.
+            . It adds the best vertex to the `peo` list.
+            . It creates a thetraedron with the best vertex and the vertices in the selected triangle.
+            . It appends the thetraedron to the `cliques` list.
+            . It sets the `newsep` variable to the selected triangle.
+            . It creates a list of all combinations of two vertices from the thetraedron and sets it to `peo_combinations_list`.
+            . It sets the elements in the `P` matrix to the corresponding elements in the `W` matrix for each combination in `peo_combinations_list`.
+            . It adds the `newsep` variable to the separators list.
+            . It updates the selected triangle by replacing one of its vertices with the best vertex and adding two new triangles with the remaining two vertices and the best vertex.
+            . It removes the best vertex from the `vertex_list`.
+            . It creates a list of vertices that are not in the `vertex_list` and sets it to `no_vertex_list`.
+            . It finds the indices of the triangles in the `triangles` list that contain the best vertex.
+            . It iterates through each index and performs the following actions:
+                * It computes the best gain and best vertex for the triangle at that index.
+                * It sets the best gain and best vertex for the triangle to the corresponding element in the `max_clique_gains` and `best_vertex` arrays, respectively.
+        '''
 
 
         self.cliques.append(list(max_clique(self.W)))
@@ -160,11 +160,11 @@ class Fast_TMFG:
         return self.cliques, self.separators, self.JS
 
     def __unweighted_tmfg(self):
-    	'''
-    	The `__unweighted_tmfg` method is a helper method of the `Fast_TMFG` class that initializes the instance variable `JS` to an NxN matrix of zeros, where `N` is the number of rows in the `original_W` matrix. Then it iterates through the list of cliques and sets the elements in the `JS` matrix corresponding to the vertices in each clique to 1. Finally, it sets the main diagonal of the `JS` matrix to 0.
+        '''
+        The `__unweighted_tmfg` method is a helper method of the `Fast_TMFG` class that initializes the instance variable `JS` to an NxN matrix of zeros, where `N` is the number of rows in the `original_W` matrix. Then it iterates through the list of cliques and sets the elements in the `JS` matrix corresponding to the vertices in each clique to 1. Finally, it sets the main diagonal of the `JS` matrix to 0.
 
-		This code is creating a matrix representation of the Triangulated Maximal Filtered Graph (TMFG). The resulting `JS` matrix will have a value of 1 for each pair of vertices that are connected in the TMFG and a value of 0 for each pair that are disconnected.
-    	'''
+        This code is creating a matrix representation of the Triangulated Maximal Filtered Graph (TMFG). The resulting `JS` matrix will have a value of 1 for each pair of vertices that are connected in the TMFG and a value of 0 for each pair that are disconnected.
+        '''
         self.JS = np.zeros((self.original_W.shape[0], self.original_W.shape[0]))
         for c in self.cliques:
             self.JS[np.ix_(c, c)] = 1
