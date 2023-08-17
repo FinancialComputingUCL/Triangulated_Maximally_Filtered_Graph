@@ -185,8 +185,8 @@ class TMFG:
             self.__weighted_inverse_correlation()
 
         G = nx.from_numpy_matrix(self.JS)
-        print(nx.check_planarity(G))
-        print(nx.is_chordal(G))
+        print(f"Planarity test passed: {nx.check_planarity(G)[0]}")
+        print(f"Chordality test passed: {nx.is_chordal(G)}")
         return self.cliques, self.separators, self.JS
 
     def __unweighted_inverse_correlation(self):
