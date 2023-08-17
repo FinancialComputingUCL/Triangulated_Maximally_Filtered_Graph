@@ -21,8 +21,8 @@ For a fully understanding of the TMFG, we refer the interested reader to the fol
 - [Dependency structures in cryptocurrency market from high to low frequency](https://arxiv.org/pdf/2206.03386.pdf)
 
 # Installation
-Install the package using [PyPI](https://pypi.org/project/fast-tmfg/):\n
-`pip3 install fast-tmfg`
+Install the package using [PyPI](https://pypi.org/project/fast-tmfg/):
+```pip3 install fast-tmfg```
 
 # Usage Example
 ```python
