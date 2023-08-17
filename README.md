@@ -1,17 +1,17 @@
 # Fast-TMFG
 
-Fast_TMFG is an ultra-fast, unweighted implementation of the Triangulated Maximally Fileterd Graph (TMFG). It is based on the work by [G. P. Massara](https://github.com/gprevide/MFCF-Pyton/tree/main/src) and is fully implemented by [A. Briola](https://github.com/AntoBr96).
+Fast_TMFG is an ultra-fast implementation of the Triangulated Maximally Fileterd Graph (TMFG). It is based on the work by [G. P. Massara](https://github.com/gprevide/MFCF-Pyton/tree/main/src) and is fully implemented by [A. Briola](https://github.com/AntoBr96).
 
 The interface is fully scikit-learn compatible. Consequently, it has three main methods:
 - `fit(c_matrix, output)`: Fits the model to the input matrix `c_matrix` (a correlation matrix). This method computes the Triangulated Maximal Filtered Graph (TMFG) based on the input matrix. The `output` parameter specifies what is the nature of the desired output:
-  - sparse inverse covariance matrix (output = 'logo')
-  - sparse unweighted correlation matrix (output = 'unweighted_inverse_correlation')
-  - sparse weighted correlation matrix (output = 'weighted_inverse_correlation')
+  - sparse inverse covariance matrix (`output = 'logo'`)
+  - sparse unweighted correlation matrix (`output = 'unweighted_inverse_correlation'`)
+  - sparse weighted correlation matrix (`output = 'weighted_inverse_correlation'`)
 - `transform()`: Returns the computed cliques and separators set of the model. The method also returns the TMFG adjacency matrix.
 - `fit_transform(c_matrix, output)`: Fits the model to the input matrix `c_matrix` (a correlation matrix) and returns the computed cliques and separators set and the TMFG adjacency matrix. The `output` parameter specifies what is the nature of the desired output:
-  - sparse inverse covariance matrix (output = 'logo')
-  - sparse unweighted correlation matrix (output = 'unweighted_inverse_correlation')
-  - sparse weighted correlation matrix (output = 'weighted_inverse_correlation')
+  - sparse inverse covariance matrix (`output = 'logo'`)
+  - sparse unweighted correlation matrix (`output = 'unweighted_inverse_correlation'`)
+  - sparse weighted correlation matrix (`output = 'weighted_inverse_correlation'`)
 
 We provide a detailed explanation of each function/method. Such an explanation is entirely generated through [ChatGPT](https://chat.openai.com).
 
@@ -25,7 +25,7 @@ For a fully understanding of the TMFG, we refer the interested reader to the fol
 import numpy as np
 import pandas as pd
 
-from TMFG_core import TMFG
+from fast_tmfg import *
 
 def generate_random_df(num_rows, num_columns):
   data = np.random.randint(0, 100, size=(num_rows, num_columns))

@@ -1,5 +1,4 @@
 import numpy as np
-import time
 
 def max_clique(W):
     '''
