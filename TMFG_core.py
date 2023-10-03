@@ -2,7 +2,7 @@ import copy
 from itertools import combinations, chain
 from numpy.linalg import inv
 
-from .utils import *
+from utils import *
 
 import pandas as pd
 
@@ -12,18 +12,18 @@ class TMFG:
     def __init__(self):
         pass
 
-    def fit(self, c_matrix, output):
+    def fit(self, weights, output):
         '''
-        The `fit` method is a member of the `TMFG` class. It is used to fit the model to the input matrix `c_matrix`. The `output` parameter specifies what is the nature of the desired output:
+        The `fit` method is a member of the `TMFG` class. It is used to fit the model to the input matrix W. The `output` parameter specifies what is the nature of the desired output:
             - sparse inverse covariance matrix (output = 'logo')
-            - sparse unweighted correlation matrix (output = 'unweighted_inverse_correlation')
-            - sparse weighted correlation matrix (output = 'weighted_inverse_correlation')
+            - sparse unweighted weights matrix (output = 'unweighted_sparse_W_matrix')
+            - sparse weighted weights matrix (output = 'weighted_sparse_W_matrix')
 
         The method does the following:
 
-        - It sets the instance variable `W` to the input matrix `c_matrix` (a correlation matrix).
-        - It creates a copy of `c_matrix` and sets it to the instance variable `original_W`.
-        - It sets the instance variable `N` to the number of columns in `c_matrix`.
+        - It sets the instance variable `W` to the input matrix `weights` (a matrix of weights -> squared correlations).
+        - It creates a copy of `weights` and sets it to the instance variable `original_W`.
+        - It sets the instance variable `N` to the number of columns in `weights`.
         - It initializes the instance variable `P` to an NxN matrix of zeros.
         - It initializes the instance variable `max_clique_gains` to an array of zeros with length (3 * N) - 6.
         - It initializes the instance variable `best_vertex` to an array of -1s with length (3 * N) - 6.
@@ -33,23 +33,23 @@ class TMFG:
         After this method is called, the instance variables will be set and the model will be ready to compute the Triangulated Maximal Filtered Graph (TMFG).
         '''
 
-        self.W = c_matrix
-        self.original_W = copy.copy(c_matrix)
+        self.W = weights
+        self.original_W = copy.copy(weights)
 
         if output == 'logo':
             self.logo = True
         else:
             self.logo = False
 
-        if output == 'unweighted_inverse_correlation':
-            self.unweighted_inverse_correlation = True
+        if output == 'unweighted_sparse_W_matrix':
+            self.unweighted_sparse_W_matrix = True
         else:
-            self.unweighted_inverse_correlation = False
+            self.unweighted_sparse_W_matrix = False
 
-        if output == 'weighted_inverse_correlation':
-            self.weighted_inverse_correlation = True
+        if output == 'weighted_sparse_W_matrix':
+            self.weighted_sparse_W_matrix = True
         else:
-            self.weighted_inverse_correlation = False
+            self.weighted_sparse_W_matrix = False
 
         self.N = self.W.shape[1]
         self.P = np.zeros((self.N, self.N))
@@ -69,8 +69,8 @@ class TMFG:
     def transform(self):
         return self.cliques, self.separators, self.JS
 
-    def fit_transform(self, c_matrix, output):
-        self.fit(c_matrix, output)
+    def fit_transform(self, weights, output):
+        self.fit(weights, output)
         return self.cliques, self.separators, self.JS
 
     def __compute_TMFG(self):
@@ -179,17 +179,17 @@ class TMFG:
 
         if self.logo:
             self.__logo()
-        elif self.unweighted_inverse_correlation:
-            self.__unweighted_inverse_correlation()
+        elif self.unweighted_sparse_W_matrix:
+            self.__unweighted_sparse_W_matrix()
         else:
-            self.__weighted_inverse_correlation()
+            self.__weighted_sparse_W_matrix()
 
         G = nx.from_numpy_matrix(self.JS)
         return self.cliques, self.separators, self.JS
 
-    def __unweighted_inverse_correlation(self):
+    def __unweighted_sparse_W_matrix(self):
         '''
-        The `__unweighted_inverse_correlation` method is a helper method of the `TMFG` class that initializes the instance variable `JS` to an NxN matrix of zeros, where `N` is the number of rows in the `original_W` matrix. Then it iterates through the list of cliques and sets the elements in the `JS` matrix corresponding to the vertices in each clique to 1. Finally, it sets the main diagonal of the `JS` matrix to 0.
+        The `__unweighted_sparse_W_matrix` method is a helper method of the `TMFG` class that initializes the instance variable `JS` to an NxN matrix of zeros, where `N` is the number of rows in the `original_W` matrix. Then it iterates through the list of cliques and sets the elements in the `JS` matrix corresponding to the vertices in each clique to 1. Finally, it sets the main diagonal of the `JS` matrix to 0.
 
         This code is creating a matrix representation of the Triangulated Maximal Filtered Graph (TMFG). The resulting `JS` matrix will have a value of 1 for each pair of vertices that are connected in the TMFG and a value of 0 for each pair that are disconnected.
         '''
@@ -199,9 +199,9 @@ class TMFG:
 
         np.fill_diagonal(self.JS, 0)
 
-    def __weighted_inverse_correlation(self):
+    def __weighted_sparse_W_matrix(self):
         '''
-        The `__weighted_inverse_correlation` method is a helper method of the `TMFG` class that initializes the instance variable `JS` to an NxN matrix of zeros, where `N` is the number of rows in the `original_W` matrix. Then it iterates through the list of cliques and sets the elements in the `JS` matrix corresponding to the vertices in each clique to the original similarity value. Finally, it sets the main diagonal of the `JS` matrix to 0.
+        The `__weighted_sparse_W_matrix` method is a helper method of the `TMFG` class that initializes the instance variable `JS` to an NxN matrix of zeros, where `N` is the number of rows in the `original_W` matrix. Then it iterates through the list of cliques and sets the elements in the `JS` matrix corresponding to the vertices in each clique to the original similarity value. Finally, it sets the main diagonal of the `JS` matrix to 0.
 
         This code is creating a matrix representation of the Triangulated Maximal Filtered Graph (TMFG). The resulting `JS` matrix will have a value -1 <= 0 <= 1 for each pair of vertices that are connected in the TMFG and a value of 0 for each pair that are disconnected.
         '''
@@ -222,5 +222,3 @@ class TMFG:
 
         for s in self.separators:
             self.JS[np.ix_(s, s)] = self.JS[np.ix_(s, s)] - inv(W[np.ix_(s, s)])
-
-        np.fill_diagonal(self.JS, 0)
