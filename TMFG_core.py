@@ -1,6 +1,7 @@
 import copy
 from itertools import combinations, chain
 from numpy.linalg import inv
+import numpy as np
 
 from utils import *
 
@@ -184,7 +185,7 @@ class TMFG:
         else:
             self.__weighted_sparse_W_matrix()
 
-        G = nx.from_numpy_matrix(self.JS)
+        G = nx.from_numpy_array(self.JS)
         return self.cliques, self.separators, self.JS
 
     def __unweighted_sparse_W_matrix(self):
