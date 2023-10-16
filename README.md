@@ -1,6 +1,6 @@
 # Fast-TMFG
 
-Fast_TMFG is an ultra-fast implementation of the Triangulated Maximally Fileterd Graph (TMFG). It is based on the work by [G. P. Massara](https://github.com/gprevide/MFCF-Pyton/tree/main/src) and is fully implemented by [A. Briola](https://github.com/AntoBr96) and Tong Zheng.
+Fast_TMFG is an ultra-fast implementation of the Triangulated Maximally Fileterd Graph (TMFG). It is based on the work by [G. P. Massara](https://github.com/gprevide/MFCF-Pyton/tree/main/src) and is fully implemented by [A. Briola](https://github.com/AntoBr96) and [Tong Zheng](https://github.com/tz1003).
 
 The interface is fully scikit-learn compatible. Consequently, it has three main methods:
 - `fit(weights, cov, output)`: Fits the model to the input matrix `weights` (e.g. a squared correlation matrix) and input matrix `cov` (e.g. covariance matrix). This method computes the Triangulated Maximal Filtered Graph (TMFG) based on the input weight matrix. The `output` parameter specifies what is the nature of the desired output:
