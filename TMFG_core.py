@@ -13,7 +13,7 @@ class TMFG:
     def __init__(self):
         pass
 
-    def fit(self, weights, output):
+    def fit(self, weights, cov, output):
         '''
         The `fit` method is a member of the `TMFG` class. It is used to fit the model to the input matrix W. The `output` parameter specifies what is the nature of the desired output:
             - sparse inverse covariance matrix (output = 'logo')
@@ -29,7 +29,7 @@ class TMFG:
         - It initializes the instance variable `max_clique_gains` to an array of zeros with length (3 * N) - 6.
         - It initializes the instance variable `best_vertex` to an array of -1s with length (3 * N) - 6.
         - It initializes the instance variables `cliques`, `separators`, and `triangles` to empty lists.
-        - It initializes the instance variables `vertex_list`, `peo`, and `JS` to None.
+        - It initializes the instance variables `vertex_list`, `peo`, and `J` to None.
         
         After this method is called, the instance variables will be set and the model will be ready to compute the Triangulated Maximal Filtered Graph (TMFG).
         '''
@@ -63,16 +63,17 @@ class TMFG:
 
         self.vertex_list = None
         self.peo = None
-        self.JS = None
+        self.J = None
+        self.cov = cov
 
-        self.cliques, self.separators, self.JS = self.__compute_TMFG()
+        self.cliques, self.separators, self.J = self.__compute_TMFG()
 
     def transform(self):
-        return self.cliques, self.separators, self.JS
+        return self.cliques, self.separators, self.J
 
-    def fit_transform(self, weights, output):
-        self.fit(weights, output)
-        return self.cliques, self.separators, self.JS
+    def fit_transform(self, weights, cov, output):
+        self.fit(weights, cov, output)
+        return self.cliques, self.separators, self.J
 
     def __compute_TMFG(self):
         '''
@@ -185,41 +186,41 @@ class TMFG:
         else:
             self.__weighted_sparse_W_matrix()
 
-        G = nx.from_numpy_array(self.JS)
-        return self.cliques, self.separators, self.JS
+        G = nx.from_numpy_array(self.J)
+        return self.cliques, self.separators, self.J
 
     def __unweighted_sparse_W_matrix(self):
         '''
-        The `__unweighted_sparse_W_matrix` method is a helper method of the `TMFG` class that initializes the instance variable `JS` to an NxN matrix of zeros, where `N` is the number of rows in the `original_W` matrix. Then it iterates through the list of cliques and sets the elements in the `JS` matrix corresponding to the vertices in each clique to 1. Finally, it sets the main diagonal of the `JS` matrix to 0.
+        The `__unweighted_sparse_W_matrix` method is a helper method of the `TMFG` class that initializes the instance variable `J` to an NxN matrix of zeros, where `N` is the number of rows in the `original_W` matrix. Then it iterates through the list of cliques and sets the elements in the `J` matrix corresponding to the vertices in each clique to 1. Finally, it sets the main diagonal of the `J` matrix to 0.
 
-        This code is creating a matrix representation of the Triangulated Maximal Filtered Graph (TMFG). The resulting `JS` matrix will have a value of 1 for each pair of vertices that are connected in the TMFG and a value of 0 for each pair that are disconnected.
+        This code is creating a matrix representation of the Triangulated Maximal Filtered Graph (TMFG). The resulting `J` matrix will have a value of 1 for each pair of vertices that are connected in the TMFG and a value of 0 for each pair that are disconnected.
         '''
-        self.JS = np.zeros((self.original_W.shape[0], self.original_W.shape[0]))
+        self.J = np.zeros((self.original_W.shape[0], self.original_W.shape[0]))
         for c in self.cliques:
-            self.JS[np.ix_(c, c)] = 1
+            self.J[np.ix_(c, c)] = 1
 
-        np.fill_diagonal(self.JS, 0)
+        np.fill_diagonal(self.J, 0)
 
     def __weighted_sparse_W_matrix(self):
         '''
-        The `__weighted_sparse_W_matrix` method is a helper method of the `TMFG` class that initializes the instance variable `JS` to an NxN matrix of zeros, where `N` is the number of rows in the `original_W` matrix. Then it iterates through the list of cliques and sets the elements in the `JS` matrix corresponding to the vertices in each clique to the original similarity value. Finally, it sets the main diagonal of the `JS` matrix to 0.
+        The `__weighted_sparse_W_matrix` method is a helper method of the `TMFG` class that initializes the instance variable `J` to an NxN matrix of zeros, where `N` is the number of rows in the `original_W` matrix. Then it iterates through the list of cliques and sets the elements in the `J` matrix corresponding to the vertices in each clique to the original similarity value. Finally, it sets the main diagonal of the `J` matrix to 0.
 
-        This code is creating a matrix representation of the Triangulated Maximal Filtered Graph (TMFG). The resulting `JS` matrix will have a value -1 <= 0 <= 1 for each pair of vertices that are connected in the TMFG and a value of 0 for each pair that are disconnected.
+        This code is creating a matrix representation of the Triangulated Maximal Filtered Graph (TMFG). The resulting `J` matrix will have a value -1 <= 0 <= 1 for each pair of vertices that are connected in the TMFG and a value of 0 for each pair that are disconnected.
         '''
-        self.JS = np.zeros((self.original_W.shape[0], self.original_W.shape[0]))
+        self.J = np.zeros((self.original_W.shape[0], self.original_W.shape[0]))
         W = self.original_W.to_numpy()
 
         for c in self.cliques:
-            self.JS[np.ix_(c, c)] = W[np.ix_(c, c)]
+            self.J[np.ix_(c, c)] = W[np.ix_(c, c)]
 
-        np.fill_diagonal(self.JS, 0)
+        np.fill_diagonal(self.J, 0)
 
     def __logo(self):
-        self.JS = np.zeros((self.original_W.shape[0], self.original_W.shape[0]))
-        W = self.original_W.to_numpy()
+        self.J = np.zeros((self.cov.shape[0], self.cov.shape[0]))
+        C = self.cov.to_numpy()
 
         for c in self.cliques:
-            self.JS[np.ix_(c, c)] = self.JS[np.ix_(c, c)] + inv(W[np.ix_(c, c)])
+            self.J[np.ix_(c, c)] += inv(C[np.ix_(c, c)])
 
         for s in self.separators:
-            self.JS[np.ix_(s, s)] = self.JS[np.ix_(s, s)] - inv(W[np.ix_(s, s)])
+            self.J[np.ix_(s, s)] -= inv(C[np.ix_(s, s)])
