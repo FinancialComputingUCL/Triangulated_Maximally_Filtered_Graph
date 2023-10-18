@@ -1,5 +1,4 @@
-function [ P, cliques, triangles, peo ] = TMFG_fast(W)
-% Base algorithm, uses only T2, builds a random apollonian network.
+function [ P, cliques, triangles, peo ] = fast_TMFG(W)% Base algorithm, uses only T2, builds a random apollonian network.
 
 % INPUT:
 %   - W: a weighted network

@@ -13,7 +13,7 @@ class TMFG:
     def __init__(self):
         pass
 
-    def fit(self, weights, cov, output):
+    def fit(self, weights, output, cov=None):
         '''
         The `fit` method is a member of the `TMFG` class. It is used to fit the model to the input matrix W. The `output` parameter specifies what is the nature of the desired output:
             - sparse inverse covariance matrix (output = 'logo')
@@ -71,8 +71,8 @@ class TMFG:
     def transform(self):
         return self.cliques, self.separators, self.J
 
-    def fit_transform(self, weights, cov, output):
-        self.fit(weights, cov, output)
+    def fit_transform(self, weights, output, cov=None):
+        self.fit(weights=weights, output=output, cov=cov)
         return self.cliques, self.separators, self.J
 
     def __compute_TMFG(self):

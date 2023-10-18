@@ -40,7 +40,7 @@ df = generate_random_df(100, 50)
 corr = np.square(df.corr())
 cov = df.cov()
 model = TMFG()
-cliques, seps, adj_matrix = model.fit_transform(weights=corr, output='unweighted_sparse_W_matrix', cov=cov)
+cliques, seps, adj_matrix = model.fit_transform(weights=corr, cov=cov, output='logo')
 ```
 
 # How to cite us
