@@ -40,7 +40,7 @@ df = generate_random_df(100, 50)
 corr = np.square(df.corr())
 cov = df.cov()
 model = TMFG()
-cliques, seps, adj_matrix = model.fit_transform(corr, cov, output='unweighted_sparse_W_matrix')
+cliques, seps, adj_matrix = model.fit_transform(weights=corr, output='unweighted_sparse_W_matrix', cov=cov)
 ```
 
 # How to cite us
