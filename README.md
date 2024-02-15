@@ -20,6 +20,9 @@ For a full understanding of the TMFG, we refer the interested reader to the foll
 - [Network filtering for big data: Triangulated maximally filtered graph](https://academic.oup.com/comnet/article/5/2/161/2555365)
 - [Dependency structures in cryptocurrency market from high to low frequency](https://arxiv.org/pdf/2206.03386.pdf)
 
+For the use of the TMFG as a topological regularization tool for the covariance selection problem, we further refer the interested reader to the following paper:
+- [Topological regularization with information filtering networks](https://www.sciencedirect.com/science/article/pii/S0020025522005904)
+
 # Installation
 Install the latest version of the package using [PyPI](https://pypi.org/project/fast-tmfg/):
 ```pip3 install fast-tmfg```
