@@ -1,226 +1,389 @@
-import copy
-from itertools import combinations, chain
-from numpy.linalg import inv
+import heapq
 import numpy as np
-
-from utils import *
-
 import pandas as pd
 
-import networkx as nx
+from enum import Enum
+from typing import Union, Optional
+from numpy.linalg import inv
+
+
+class OutputMode(Enum):
+    LOGO = "logo"
+    UNWEIGHTED_SPARSE_W_MATRIX = "unweighted_sparse_W_matrix"
+    WEIGHTED_SPARSE_W_MATRIX = "weighted_sparse_W_matrix"
+
 
 class TMFG:
+    """
+    The TMFG (Triangulated Maximally Filtered Graph) class implements the
+    Triangulated Maximally Filtered Graph construction from a given
+    correlation matrix. The TMFG is a sparse network representation technique
+    useful in complex network analysis, particularly for large correlation
+    matrices.
+
+    The TMFG algorithm starts by choosing an initial 4-clique and then
+    iteratively adds vertices that maximize a certain gain criterion until no
+    vertices remain. The final output is the set of cliques, separators,
+    and an adjacency matrix representing the TMFG.
+
+    Attributes
+    ----------
+    _W : np.ndarray
+        The input correlation (or similarity) matrix.
+    _cov : np.ndarray
+        The covariance matrix.
+    _output_mode : OutputMode
+        The desired output mode.
+    _N : int
+        The size (number of vertices) of the input matrix.
+    _gains_pq : list[tuple[float, int, int]]
+        A priority queue (implemented via heapq) holding tuples of
+        (-gain, vertex, triangle_index) to select the best vertex insertion at
+        each step.
+    _cliques : list[list[int]]
+        A list of 4-cliques formed during the TMFG construction.
+    _separators : list[list[int]]
+        A list of 3-clique separators corresponding to the edges added during
+        vertex insertions.
+    _triangles : list[list[int]]
+        A list of current triangles. Each triangle is a 3-clique to which a new
+        vertex can be added.
+    _remaining_vertices_mask : np.ndarray
+        A boolean mask indicating which vertices remain to be inserted into the
+        TMFG.
+    _J : np.ndarray
+        The adjacency matrix of the TMFG once constructed. Initially None until
+        computed.
+    """
+
     def __init__(self):
         pass
 
-    def fit(self, weights, output, cov=None):
-        '''
-        The `fit` method is a member of the `TMFG` class. It is used to fit the model to the input matrix W. The `output` parameter specifies what is the nature of the desired output:
+    def fit(
+        self,
+        weights: Union[np.ndarray, pd.DataFrame],
+        output: str,
+        cov: Optional[Union[np.ndarray, pd.DataFrame]] = None,
+    ) -> None:
+        """
+        The `fit` method is a member of the `TMFG` class. It is used to fit
+        the model to the input matrix W.
+
+        Parameters
+        ----------
+        weights : np.ndarray or pd.DataFrame
+            The input correlation (or similarity) matrix. Must be square and
+            symmetric.
+        output : str
+            The desired output:
             - sparse inverse covariance matrix (output = 'logo')
             - sparse unweighted weights matrix (output = 'unweighted_sparse_W_matrix')
             - sparse weighted weights matrix (output = 'weighted_sparse_W_matrix')
+        cov : np.ndarray or pd.DataFrame, optional
+            The covariance matrix. Default is None.
+        """
+        if isinstance(weights, pd.DataFrame):
+            weights = weights.to_numpy()
+        self._W = weights.copy()
 
-        The method does the following:
+        if cov is not None:
+            if isinstance(cov, pd.DataFrame):
+                cov = cov.to_numpy()
+            self._cov = cov.copy()
 
-        - It sets the instance variable `W` to the input matrix `weights` (a matrix of weights -> squared correlations).
-        - It creates a copy of `weights` and sets it to the instance variable `original_W`.
-        - It sets the instance variable `N` to the number of columns in `weights`.
-        - It initializes the instance variable `P` to an NxN matrix of zeros.
-        - It initializes the instance variable `max_clique_gains` to an array of zeros with length (3 * N) - 6.
-        - It initializes the instance variable `best_vertex` to an array of -1s with length (3 * N) - 6.
-        - It initializes the instance variables `cliques`, `separators`, and `triangles` to empty lists.
-        - It initializes the instance variables `vertex_list`, `peo`, and `J` to None.
-        
-        After this method is called, the instance variables will be set and the model will be ready to compute the Triangulated Maximal Filtered Graph (TMFG).
-        '''
+        self._output_mode = OutputMode(output)
 
-        self.W = weights
-        self.original_W = copy.copy(weights)
+        self._initialize()
+        self._compute_TMFG()
 
-        if output == 'logo':
-            self.logo = True
-        else:
-            self.logo = False
+    def transform(self) -> tuple[list[list[int]], list[list[int]], np.ndarray]:
+        """
+        Return the TMFG components after fitting the model.
 
-        if output == 'unweighted_sparse_W_matrix':
-            self.unweighted_sparse_W_matrix = True
-        else:
-            self.unweighted_sparse_W_matrix = False
+        Returns
+        -------
+        cliques : list[list[int]]
+            The list of 4-cliques constructed by TMFG.
+        separators : list[list[int]]
+            The list of 3-clique separators.
+        J : np.ndarray
+            The adjacency matrix depending on the output mode.
+        """
+        return self._cliques, self._separators, self._J
 
-        if output == 'weighted_sparse_W_matrix':
-            self.weighted_sparse_W_matrix = True
-        else:
-            self.weighted_sparse_W_matrix = False
+    def fit_transform(
+        self,
+        weights: Union[np.ndarray, pd.DataFrame],
+        output: str,
+        cov: Optional[Union[np.ndarray, pd.DataFrame]] = None,
+    ) -> tuple[list, list, np.ndarray]:
+        """
+        Fit the model to the input matrix and return the TMFG components.
 
-        self.N = self.W.shape[1]
-        self.P = np.zeros((self.N, self.N))
-        self.max_clique_gains = np.zeros(((3 * self.N) - 6))
-        self.best_vertex = np.array([-1] * ((3 * self.N) - 6))
+        Parameters
+        ----------
+        weights : np.ndarray or pd.DataFrame
+            The input correlation (or similarity) matrix. Must be square and
+            symmetric.
+        output : str
+            The desired output:
+            - sparse inverse covariance matrix (output = 'logo')
+            - sparse unweighted weights matrix (output = 'unweighted_sparse_W_matrix')
+            - sparse weighted weights matrix (output = 'weighted_sparse_W_matrix')
+        cov : np.ndarray or pd.DataFrame, optional
+            The covariance matrix. Default is None.
 
-        self.cliques = []
-        self.separators = []
-        self.triangles = []
-
-        self.vertex_list = None
-        self.peo = None
-        self.J = None
-        self.cov = cov
-
-        self.cliques, self.separators, self.J = self.__compute_TMFG()
-
-    def transform(self):
-        return self.cliques, self.separators, self.J
-
-    def fit_transform(self, weights, output, cov=None):
+        Returns
+        -------
+        cliques : list[list[int]]
+            The list of 4-cliques constructed by TMFG.
+        separators : list[list[int]]
+            The list of 3-clique separators.
+        J : np.ndarray
+            The adjacency matrix depending on the output mode.
+        """
         self.fit(weights=weights, output=output, cov=cov)
-        return self.cliques, self.separators, self.J
+        return self._cliques, self._separators, self._J
 
-    def __compute_TMFG(self):
-        '''
-        The `__compute_TMFG` method is a helper method of the `TMFG` class that computes the Triangulated Maximal Filtered Graph (TMFG) based on the input matrix.
+    def _initialize(self):
+        """
+        Perform initialization steps for the TMFG construction:
+        - Initialize instance variables.
+        - Select the initial 4-clique.
+        - Create the initial 4 triangles (from the 4-clique).
+        - Prepare the priority queue of vertex gains for each triangle.
+        - Mark the initial 4-clique vertices as inserted.
+        - Set diagonal of W to zero.
+        """
+        self._N = self._W.shape[1]
 
-        The method does the following:
+        # Priority queue for gains: (-gain, best_vertex, triangle_index)
+        self._gains_pq = []
 
-        - It computes the maximum clique of the input matrix and appends it to the list of cliques.
-        - It creates a list of vertices that are not in the maximum clique and sets it to the `vertex_list` instance variable.
-        - It creates four triangles based on the vertices in the maximum clique and appends them to the `triangles` list.
-        - It sets the `peo` instance variable to a copy of the maximum clique.
-        - It sets the main diagonal of the `W` matrix to zeros.
-        - It creates a list of all combinations of two vertices from the maximum clique and sets it to `peo_combinations_list`.
-        - It sets the elements in the `P` matrix to the corresponding elements in the `W` matrix for each combination in `peo_combinations_list`.
-        - It iterates through each triangle in the `triangles` list and computes the best gain and best vertex for each one. It sets the best gain and best vertex for each triangle to the corresponding element in the `max_clique_gains` and `best_vertex` arrays, respectively.
-        - It iterates through each vertex in the `vertex_list` and performs the following actions:
-            . It selects the triangle with the highest maximum clique gain.
-            . It selects the best vertex for that triangle.
-            . It adds the best vertex to the `peo` list.
-            . It creates a thetraedron with the best vertex and the vertices in the selected triangle.
-            . It appends the thetraedron to the `cliques` list.
-            . It sets the `newsep` variable to the selected triangle.
-            . It creates a list of all combinations of two vertices from the thetraedron and sets it to `peo_combinations_list`.
-            . It sets the elements in the `P` matrix to the corresponding elements in the `W` matrix for each combination in `peo_combinations_list`.
-            . It adds the `newsep` variable to the separators list.
-            . It updates the selected triangle by replacing one of its vertices with the best vertex and adding two new triangles with the remaining two vertices and the best vertex.
-            . It removes the best vertex from the `vertex_list`.
-            . It creates a list of vertices that are not in the `vertex_list` and sets it to `no_vertex_list`.
-            . It finds the indices of the triangles in the `triangles` list that contain the best vertex.
-            . It iterates through each index and performs the following actions:
-                * It computes the best gain and best vertex for the triangle at that index.
-                * It sets the best gain and best vertex for the triangle to the corresponding element in the `max_clique_gains` and `best_vertex` arrays, respectively.
-        '''
+        self._cliques = []
+        self._separators = []
+        self._triangles = []
 
+        self._remaining_vertices_mask = np.ones(self._N, dtype=bool)
+        self._J = None
 
-        self.cliques.append(list(max_clique(self.W)))
-        self.vertex_list = np.setdiff1d(range(self.N), self.cliques[0])
+        # Find the initial 4-clique and create the initial triangles
+        c0 = self._max_clique()
+        self._cliques.append(c0)
 
-        self.triangles.append(list(pd.Series(self.cliques[0])[[0, 1, 2]]))
-        self.triangles.append(list(pd.Series(self.cliques[0])[[0, 1, 3]]))
-        self.triangles.append(list(pd.Series(self.cliques[0])[[0, 2, 3]]))
-        self.triangles.append(list(pd.Series(self.cliques[0])[[1, 2, 3]]))
+        vx, vy, vz, vw = c0
+        self._triangles = [[vx, vy, vz], [vx, vy, vw], [vx, vz, vw], [vy, vz, vw]]
 
-        self.peo = copy.copy(self.cliques[0])
-        self.W = np.array(self.W)
-        self.W[np.diag_indices_from(self.W)] = 0
+        self._remaining_vertices_mask[c0] = False
+        np.fill_diagonal(self._W, 0)
 
-        peo_combinations_list = []
-        for n in range(len(self.cliques[0]) + 1):
-            two_d_lists = len(list(combinations(self.cliques[0], n))[0])
-            if two_d_lists == 2:
-                peo_combinations_list += list(combinations(self.cliques[0], n))
+        self._triangle_columns_sum_cache = {}
+        for i, t in enumerate(self._triangles):
+            best_v, best_gain = self._get_best_gain(t)
+            heapq.heappush(self._gains_pq, (-best_gain, best_v, i))
 
-        for i in peo_combinations_list:
-            self.P[int(i[0]), int(i[1])] = self.W[int(i[0]), int(i[1])]
+    def _compute_TMFG(self) -> tuple[list[list[int]], list[list[int]], np.ndarray]:
+        """
+        Compute the Triangulated Maximally Filtered Graph (TMFG).
 
-        for t in range(0, 4):
-            index_max, max_element = get_best_gain(self.N, self.vertex_list, self.triangles[t], self.W, None)
-            self.max_clique_gains[t] = max_element
-            self.best_vertex[t] = index_max
+        This method iteratively extracts the best gain vertex insertion from the
+        priority queue and updates the network structure until all vertices have
+        been inserted.
 
-        for u in range(0, (self.N - 4)):
-            nt = np.argmax(self.max_clique_gains)
-            nv = self.best_vertex[nt]
-            self.peo.append(nv)
+        Returns
+        -------
+        cliques : list[list[int]]
+            The list of 4-cliques constructed by TMFG.
+        separators : list[list[int]]
+            The list of 3-clique separators.
+        JS : np.ndarray
+            The adjacency matrix of the unweighted TMFG (1/0 entries).
 
-            thetraedron = [nv] + self.triangles[nt]
-            self.cliques.append(thetraedron)
-            newsep = self.triangles[nt]
+        Notes
+        -----
+        After computation, self._J will hold the adjacency matrix.
+        """
+        while len(self._cliques) < self._N - 3:
+            # Each step, we pick the best gain vertex and the triangle to insert into
+            gain, v, triangle_idx = heapq.heappop(self._gains_pq)
+            if not self._remaining_vertices_mask[v]:
+                # If vertex is already inserted, just recalculate for that triangle
+                self._update_gains([triangle_idx])
+            else:
+                # Insert the vertex into the TMFG and update gains
+                new_triangles_idxes = self._insert_vertex(v, triangle_idx)
+                self._update_gains(new_triangles_idxes)
 
-            peo_combinations_list = []
-            thetraedron_tbc = [nv] + newsep
-            for n in range(len(thetraedron_tbc) + 1):
-                two_d_lists = len(list(combinations(thetraedron_tbc, n))[0])
-                if two_d_lists == 2:
-                    peo_combinations_list += list(combinations(thetraedron_tbc, n))
+        self._get_adjacency_matrix()
+        return self._cliques, self._separators, self._J
 
-            for i in peo_combinations_list:
-                self.P[int(i[0]), int(i[1])] = self.W[int(i[0]), int(i[1])]
+    def _max_clique(self) -> list[int]:
+        """
+        Identify the initial 4-clique to start the TMFG construction.
 
-            self.separators.append(newsep)
-            self.triangles[nt] = [newsep[0], newsep[1], nv]
-            self.triangles.append([newsep[0], newsep[2], nv])
-            self.triangles.append([newsep[1], newsep[2], nv])
-            self.vertex_list = np.setdiff1d(self.vertex_list, nv)
+        The heuristic used is:
+        - Compute a "score" for each vertex as the sum of edges above the mean
+        value.
+        - Select the top-4 scoring vertices.
 
-            no_vertex_list = np.setdiff1d(range(self.N), self.vertex_list)
+        Returns
+        -------
+        np.ndarray
+            Array of 4 vertex indices forming the initial 4-clique.
+        """
+        mean_val = np.mean(self._W)
+        v = np.sum(np.multiply(self._W, (self._W > mean_val)), axis=1)
+        # [::-1] added to prevent regression, but it is not needed
+        return list(np.argsort(v)[-4:][::-1])
 
-            if len(self.vertex_list) > 0:
-                indices_of_interest = np.argwhere(self.best_vertex == nv)
-                indices_of_interest = list(chain(*indices_of_interest))
+    def _triangle_columns_sum(self, triangle: tuple[int]) -> np.ndarray:
+        """
+        Compute the sum of edges connected to the given triangle. The results
+        are cached because we might update the best gain for a triangle if
+        the original best vertex is used.
 
-                for t in indices_of_interest:
-                    index_max, max_element = get_best_gain(self.N, self.vertex_list, self.triangles[t], self.W, no_vertex_list)
-                    self.max_clique_gains[t] = max_element
-                    self.best_vertex[t] = index_max
+        Parameters
+        ----------
+        triangle : tuple[int]
+            A tuple of 3 vertex indices forming a triangle. Note that the
+            triangle is a tuple to allow caching.
 
-            self.max_clique_gains[nt] = 0
-            ct = len(self.triangles) - 1
-            if len(self.vertex_list) > 0:
-                for t in [nt, (ct - 1), ct]:
-                    index_max, max_element = get_best_gain(self.N, self.vertex_list, self.triangles[t], self.W, no_vertex_list)
-                    self.max_clique_gains[t] = max_element
-                    self.best_vertex[t] = index_max
+        Returns
+        -------
+        np.ndarray
+            A 1D array where each element is the sum of the corresponding row's
+            edges to the triangle vertices.
+        """
+        if triangle not in self._triangle_columns_sum_cache:
+            self._triangle_columns_sum_cache[triangle] =  (
+                self._W[:, triangle[0]] + self._W[:, triangle[1]] + self._W[:, triangle[2]]
+            )
+        return self._triangle_columns_sum_cache[triangle]
 
-        if self.logo:
-            self.__logo()
-        elif self.unweighted_sparse_W_matrix:
-            self.__unweighted_sparse_W_matrix()
-        else:
-            self.__weighted_sparse_W_matrix()
+    def _get_best_gain(self, triangle: list[int]) -> tuple[int, float]:
+        """
+        Find the best vertex to add to a given triangle based on gain.
 
-        G = nx.from_numpy_array(self.J)
-        return self.cliques, self.separators, self.J
+        The gain is defined as the sum of correlation values from candidate
+        vertices to the vertices of the triangle. Only vertices not yet
+        inserted are considered.
 
-    def __unweighted_sparse_W_matrix(self):
-        '''
-        The `__unweighted_sparse_W_matrix` method is a helper method of the `TMFG` class that initializes the instance variable `J` to an NxN matrix of zeros, where `N` is the number of rows in the `original_W` matrix. Then it iterates through the list of cliques and sets the elements in the `J` matrix corresponding to the vertices in each clique to 1. Finally, it sets the main diagonal of the `J` matrix to 0.
+        Parameters
+        ----------
+        triangle : list[int]
+            List of three vertex indices forming the triangle.
 
-        This code is creating a matrix representation of the Triangulated Maximal Filtered Graph (TMFG). The resulting `J` matrix will have a value of 1 for each pair of vertices that are connected in the TMFG and a value of 0 for each pair that are disconnected.
-        '''
-        self.J = np.zeros((self.original_W.shape[0], self.original_W.shape[0]))
-        for c in self.cliques:
-            self.J[np.ix_(c, c)] = 1
+        Returns
+        -------
+        best_v : int
+            The index of the vertex that yields the highest gain.
+        best_gain : float
+            The maximum gain value.
+        """
+        gvec = self._triangle_columns_sum(tuple(triangle))
+        # Only consider vertices not yet inserted
+        gvec *= self._remaining_vertices_mask
 
-        np.fill_diagonal(self.J, 0)
+        best_v = np.argmax(gvec)
+        best_gain = gvec[best_v]
+        return best_v, best_gain
 
-    def __weighted_sparse_W_matrix(self):
-        '''
-        The `__weighted_sparse_W_matrix` method is a helper method of the `TMFG` class that initializes the instance variable `J` to an NxN matrix of zeros, where `N` is the number of rows in the `original_W` matrix. Then it iterates through the list of cliques and sets the elements in the `J` matrix corresponding to the vertices in each clique to the original similarity value. Finally, it sets the main diagonal of the `J` matrix to 0.
+    def _insert_vertex(self, vertex: int, triangle_idx: int):
+        """
+        Insert a new vertex into the TMFG by "expanding" a triangle into three
+        new triangles.
 
-        This code is creating a matrix representation of the Triangulated Maximal Filtered Graph (TMFG). The resulting `J` matrix will have a value -1 <= 0 <= 1 for each pair of vertices that are connected in the TMFG and a value of 0 for each pair that are disconnected.
-        '''
-        self.J = np.zeros((self.original_W.shape[0], self.original_W.shape[0]))
-        W = self.original_W.to_numpy()
+        This operation:
+        - Adds a new 4-clique formed by the triangle and the new vertex.
+        - Stores the original triangle as a separator.
+        - Updates the set of triangles to reflect the insertion of the new vertex.
 
-        for c in self.cliques:
-            self.J[np.ix_(c, c)] = W[np.ix_(c, c)]
+        Parameters
+        ----------
+        vertex : int
+            The vertex index to be inserted.
+        triangle_idx : int
+            The index of the triangle into which the vertex will be inserted.
 
-        np.fill_diagonal(self.J, 0)
+        Returns
+        -------
+        new_triangles_idxes : list[int]
+            The indices of the new triangles created.
+        """
+        triangle = self._triangles[triangle_idx]
+        del self._triangle_columns_sum_cache[tuple(triangle)]
+        self._cliques.append(triangle + [vertex])
+        self._separators.append(triangle)
 
-    def __logo(self):
-        self.J = np.zeros((self.cov.shape[0], self.cov.shape[0]))
-        C = self.cov.to_numpy()
+        self._remaining_vertices_mask[vertex] = False
 
-        for c in self.cliques:
-            self.J[np.ix_(c, c)] += inv(C[np.ix_(c, c)])
+        vx, vy, vz = triangle
+        new_triangles = [[vx, vy, vertex], [vy, vz, vertex], [vx, vz, vertex]]
+        self._triangles[triangle_idx] = new_triangles[0]
+        self._triangles.extend(new_triangles[1:])
+        new_triangles_idxes = [
+            triangle_idx,
+            len(self._triangles) - 2,
+            len(self._triangles) - 1,
+        ]
+        return new_triangles_idxes
 
-        for s in self.separators:
-            self.J[np.ix_(s, s)] -= inv(C[np.ix_(s, s)])
+    def _update_gains(self, new_triangles_idxes: list[int]):
+        """
+        Update the priority queue with new gain values for newly created or
+        modified triangles.
+
+        Parameters
+        ----------
+        new_triangles_idxes : list[int]
+            Indices of the triangles whose gains need to be recalculated and
+            re-pushed onto the queue.
+        """
+        for i in new_triangles_idxes:
+            triangle = self._triangles[i]
+            best_v, best_gain = self._get_best_gain(triangle)
+            heapq.heappush(self._gains_pq, (-best_gain, best_v, i))
+
+    def _get_adjacency_matrix(self):
+        """
+        Construct the adjacency matrix (J) of the TMFG based on output_mode.
+        """
+        if self._output_mode == OutputMode.LOGO:
+            self._logo()
+        elif self._output_mode == OutputMode.UNWEIGHTED_SPARSE_W_MATRIX:
+            self._unweighted_sparse_W_matrix()
+        elif self._output_mode == OutputMode.WEIGHTED_SPARSE_W_MATRIX:
+            self._weighted_sparse_W_matrix()
+
+    def _unweighted_sparse_W_matrix(self):
+        """
+        Construct the unweighted adjacency matrix of the TMFG.
+
+        JS[i, j] = 1 if there is an edge between i and j in the TMFG, and 0 otherwise.
+        """
+        self._J = np.zeros((self._N, self._N))
+        for c in self._cliques:
+            self._J[np.ix_(c, c)] = 1
+        np.fill_diagonal(self._J, 0)
+
+    def _weighted_sparse_W_matrix(self):
+        """
+        Construct a matrix representation of the Triangulated Maximal
+        Filtered Graph (TMFG). The resulting `J` matrix will have a value
+        -1 <= 0 <= 1 for each pair of vertices that are connected in the TMFG
+        and a value of 0 for each pair that are disconnected.
+        """
+        self._J = np.zeros((self._N, self._N))
+        for c in self._cliques:
+            self._J[np.ix_(c, c)] = self._W[np.ix_(c, c)]
+        np.fill_diagonal(self._J, 0)
+
+    def _logo(self):
+        """
+        Construct the sparse inverse covariance matrix of the TMFG.
+        """
+        self._J = np.zeros((self._N, self._N))
+        for c in self._cliques:
+            self._J[np.ix_(c, c)] += inv(self._cov[np.ix_(c, c)])
+        for s in self._separators:
+            self._J[np.ix_(s, s)] -= inv(self._cov[np.ix_(s, s)])

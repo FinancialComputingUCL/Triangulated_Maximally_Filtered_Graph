@@ -1,22 +1,28 @@
 import unittest
 import numpy as np
 import pandas as pd
-from TMFG_core import TMFG as FastTMFG
-from optimised_tmfg import TMFG as OptimisedTMFG
+from tqdm import tqdm
+import networkx as nx
+import os
+
+os.chdir("..")
+from legacy_code.TMFG_core import TMFG as LegacyTMFG
+from TMFG_core import TMFG
 
 
 class TestTMFG(unittest.TestCase):
     def setUp(self):
         self.number_of_test_iterations = 100
-        self.fast_tmfg = FastTMFG()
-        self.optimised_tmfg = OptimisedTMFG()
+        self.fast_tmfg = LegacyTMFG()
+        self.optimised_tmfg = TMFG()
 
     def generate_symmetric_matrix(self, size):
         random_matrix = np.random.rand(size, size)
         return (random_matrix + random_matrix.T) / 2
 
     def test_unweighted_sparse_matrix(self):
-        for _ in range(self.number_of_test_iterations):
+        print("Testing 'unweighted_sparse_matrix' setup...")
+        for _ in tqdm(range(self.number_of_test_iterations)):
             W = self.generate_symmetric_matrix(np.random.randint(10, 200))
 
             (
@@ -34,6 +40,10 @@ class TestTMFG(unittest.TestCase):
                 weights=W, output="unweighted_sparse_W_matrix"
             )
 
+            net = nx.from_numpy_array(optimised_adj_matrix)
+            self.assertTrue(nx.is_chordal(net))
+            self.assertTrue(nx.is_planar(net))
+
             self.assertEqual(
                 [sorted(clique) for clique in fast_cliques],
                 [sorted(clique) for clique in optimised_cliques],
@@ -45,8 +55,9 @@ class TestTMFG(unittest.TestCase):
             self.assertTrue(np.array_equal(fast_adj_matrix, optimised_adj_matrix))
 
     def test_weighted_sparse_matrix(self):
-        for _ in range(self.number_of_test_iterations):
-            W = self.generate_symmetric_matrix(np.random.randint(10, 200))
+        print("Testing 'weighted_sparse_matrix' setup...")
+        for _ in tqdm(range(self.number_of_test_iterations)):
+            W = self.generate_symmetric_matrix(np.random.randint(10, 500))
 
             (
                 fast_cliques,
@@ -63,6 +74,10 @@ class TestTMFG(unittest.TestCase):
                 weights=W, output="weighted_sparse_W_matrix"
             )
 
+            net = nx.from_numpy_array(optimised_adj_matrix)
+            self.assertTrue(nx.is_chordal(net))
+            self.assertTrue(nx.is_planar(net))
+
             self.assertEqual(
                 [sorted(clique) for clique in fast_cliques],
                 [sorted(clique) for clique in optimised_cliques],
@@ -74,8 +89,9 @@ class TestTMFG(unittest.TestCase):
             self.assertTrue(np.array_equal(fast_adj_matrix, optimised_adj_matrix))
 
     def test_logo_output(self):
-        for _ in range(self.number_of_test_iterations):
-            W = self.generate_symmetric_matrix(np.random.randint(10, 200))
+        print("Testing 'logo_output' setup...")
+        for _ in tqdm(range(self.number_of_test_iterations)):
+            W = self.generate_symmetric_matrix(np.random.randint(10, 500))
             cov = np.cov(W)
 
             (
@@ -99,7 +115,9 @@ class TestTMFG(unittest.TestCase):
                 [sorted(separator) for separator in fast_separator],
                 [sorted(separator) for separator in optimised_separator],
             )
-            # Since the inverse of the covariance matrix is used in the logo output, the results may not be exactly the same. We add a tolerance of 1e-5.
+            # Since the inverse of the covariance matrix is used in the logo
+            # output, the results may not be exactly the same. We add a
+            # tolerance of 1e-5.
             self.assertTrue(
                 np.allclose(fast_adj_matrix, optimised_adj_matrix, rtol=1e-5, atol=1e-8)
             )
