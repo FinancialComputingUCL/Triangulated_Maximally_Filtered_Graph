@@ -1,6 +1,6 @@
 # Fast-TMFG
 
-Fast_TMFG is an ultra-fast implementation of the Triangulated Maximally Fileterd Graph (TMFG). It is based on the work by [Guido Previde Massara](https://github.com/gprevide/MFCF-Pyton/tree/main/src) and is fully implemented by [Antonio Briola](https://github.com/AntoBr96) and [Tong Zheng](https://github.com/tz1003).
+Fast_TMFG is an ultra-fast implementation of the Triangulated Maximally Fileterd Graph (TMFG). It is based on the work by [Guido Previde Massara](https://github.com/gprevide/MFCF-Pyton/tree/main/src) and is fully implemented [Yan Huang](https://github.com/yanh11), replacing the [previous version](legacy_code/TMFG_core.py) proposed by [Antonio Briola](https://github.com/AntoBr96) and [Tong Zheng](https://github.com/tz1003). The details of the optimised update can be found [here](legacy_code/README.md).
 
 The interface is fully scikit-learn compatible. Consequently, it has three main methods:
 - `fit(weights, cov, output)`: Fits the model to the input matrix `weights` (e.g. a squared correlation matrix) and input matrix `cov` (e.g. covariance matrix). This method computes the Triangulated Maximal Filtered Graph (TMFG) based on the input weight matrix. The `output` parameter specifies what is the nature of the desired output:
@@ -28,6 +28,19 @@ Install the latest version of the package using [PyPI](https://pypi.org/project/
 ```pip3 install fast-tmfg```
 
 # Usage Example
+## Numpy Input (Preferred)
+```python
+import numpy as np
+from fast_tmfg import *
+
+data = np.random.randint(0, 100, size=(100, 50))
+corr = np.square(np.corrcoef(data, rowvar=False))
+cov = np.cov(data, rowvar=False)
+model = TMFG()
+cliques, seps, adj_matrix = model.fit_transform(weights=corr, cov=cov, output='logo')
+```
+
+## Pandas DataFrame Input
 ```python
 import numpy as np
 import pandas as pd
