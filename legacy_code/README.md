@@ -1,4 +1,4 @@
-# Optimisation Update (2025/1)
+# Original TMFG Implementation (Replaced in 2025/1)
 Although the underlying TMFG algorithm was already efficient, we have further optimised the code implementation to improve its performance. The new implementation is significantly faster (demonstrated [here](plot.ipynb)), especially for large datasets, and provides a more scalable solution. 
 ## Implementation of the new optimisation algorithm
 - Perform operations mainly in NumPy, leveraging its efficient vectorised computations.
